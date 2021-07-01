@@ -1,0 +1,162 @@
+class Editor {
+
+	constructor(element_id) {
+		this.words = []
+		this.editor = document.getElementById(element_id);
+		this.debug = document.getElementById('typer-debug');
+		this.idx = 0;
+		this.char_ptr = 0;
+		this.lines = 0;
+		this.line_ptr = 0;
+		this.control = false;
+		this.shift = false;
+		this.ascii = 0;
+		this.reconigzed = false;
+		this.tokenizer = new Tokenizer();
+		this.tokenizer.initiate({
+			type: ['let', 'var', 'const']
+		});
+		this.words.push('');
+	}
+
+	show_debug() {
+		if(this.debug == null || this.debug == undefined)
+			return;
+
+		this.debug.innerHTML =  `index: ${this.idx.toString()}|`;
+		this.debug.innerHTML += `pointer: ${this.char_ptr.toString()}|`;
+		this.debug.innerHTML += `line: ${this.line_ptr.toString()}|`;
+		this.debug.innerHTML += `total: ${this.words.length.toString()} words|`;
+		this.debug.innerHTML += `control: ${this.control.toString()}|`
+		this.debug.innerHTML += `shift: ${this.shift.toString()}|`;
+		this.debug.innerHTML += `ascii: ${this.ascii}`;
+		this.debug.innerHTML += '<br/><br/>'
+	}
+
+	render() {
+		this.show_debug();
+		let content = '';
+
+		this.editor.innerHTML = '';
+		for(let i = 0; i < this.words.length; i++) {
+			content = this.words[i];
+
+			if(this.idx == i)
+			{
+				content = '<u>' + content + '</u>|';
+			}
+
+			if(this.reconigzed)
+			{
+				switch(this.tokenizer.match.type)
+				{
+					case 'type':
+					content = '<em>' + content + '<em/>';
+					break;
+				}
+			}
+
+			this.editor.innerHTML += content;
+		}
+	}
+
+	keydown(key, ascii) {
+		this.ascii = ascii;
+		if(key.length == 1 && ascii > 32 && ascii <= 126)
+		{
+			this.words[this.idx] += key;
+			this.char_ptr++;
+			this.reconigzed = this.tokenizer.step(key);
+		}
+		else
+		{
+			switch(ascii)
+			{
+				case 37: // left
+				if(this.idx > 0 && this.words.length > 1)
+				this.idx--;
+				break;
+
+				case 39: // right
+				if(this.words.length > 1 && this.idx < this.words.length - 1)
+				this.idx++;
+				break;
+
+				case 32: // space
+				//this.words.push(' '); // bug: adicionava sempre no final do texto
+				//this.words.push('');
+				this.words.splice(this.idx + 1, 0, ' ');
+				this.words.splice(this.idx + 2, 0, '');
+				this.idx += 2;
+				this.char_ptr = 0;
+				this.tokenizer.reset();
+				break;
+
+				case 13: // CR = carriage return = enter
+				//this.words.push('<br/>'); // mesmo bug do espaco :p
+				//this.words.push('');
+				this.words.splice(this.idx + 1, 0, '<br/>');
+				this.words.splice(this.idx + 2, 0, '');
+				this.idx += 2;
+				this.char_ptr = 0;
+				this.line_ptr++;
+				this.tokenizer.reset();
+				break;
+
+				case 16: // S0, S1 = shift l & r
+				this.shift = true;
+				break;
+
+				case 17: // DC = data control = CTRL
+				case 18:
+				case 19:
+				case 20:
+				this.control = true;
+				break;
+
+				case 8: // BS = backspace
+				if(this.words[this.idx] == '<br/>')
+				{
+					this.words[this.idx] = '';
+					this.line_ptr--;
+				}
+				this.words[this.idx] = this.words[this.idx].slice(0, -1);
+
+				if(this.words[this.idx].length == 0)
+				{
+					if(this.words.length > 1)
+					{
+						this.words.splice(this.idx, 1);
+					}
+					
+					if(this.idx > 0)
+					{
+						this.idx--;
+					}
+				}
+				break;
+			}
+		}
+		this.render();
+	}
+
+	keyup(key, ascii)
+	{
+		switch(ascii)
+		{
+			case 16:
+			this.shift = false;
+			break;
+
+			case 17: case 18:
+			case 19: case 20:
+			this.control = false;
+			break;
+		}
+	}
+}
+
+const editor = new Editor('editor');
+
+document.getElementById('body').onkeydown = (e) => editor.keydown(e.key, e.which);
+document.getElementById('body').onkeyup = (e) => editor.keyup(e.key, e.which);
