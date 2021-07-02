@@ -40,7 +40,7 @@ class Editor {
 	}
 
 	render() {
-		//this.show_debug();
+		this.show_debug();
 		
 		let content = '';
 
